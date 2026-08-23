@@ -1,0 +1,26 @@
+{
+  "name": "trustence-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "seed": "node src/seed-cli.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.0.1",
+    "geoip-lite": "2.0.3",
+    "helmet": "^8.1.0",
+    "multer": "^2.0.2",
+    "ua-parser-js": "1.0.41",
+    "zod": "^4.0.17"
+  }
+}

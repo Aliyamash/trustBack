@@ -1,0 +1,21 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - ./.env
+    environment:
+      HOST: 0.0.0.0
+      SEED_ASSET_DIR: /app/seed-assets
+      TRUST_PROXY: ${TRUST_PROXY:-0}
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - trustence-data:/app/data
+      - trustence-uploads:/app/uploads
+    restart: unless-stopped
+
+volumes:
+  trustence-data:
+  trustence-uploads:

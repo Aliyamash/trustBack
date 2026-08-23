@@ -1,0 +1,7 @@
+.env
+data/*.sqlite*
+uploads/*
+!data/.gitkeep
+!uploads/.gitkeep
+node_modules/
+.pnpm-store/
