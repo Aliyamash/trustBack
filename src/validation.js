@@ -48,6 +48,12 @@ export const projectSchema = z.object({
   is_published: z.boolean().default(true),
 });
 
+export const projectImageSchema = z.object({
+  path: z.string().trim().min(1).max(500),
+  alt_text: optionalText(250),
+  sort_order: z.coerce.number().int().min(0).max(10000).default(0),
+});
+
 export const teamSchema = z.object({
   name: z.string().trim().min(2).max(120),
   position: z.string().trim().min(2).max(120),

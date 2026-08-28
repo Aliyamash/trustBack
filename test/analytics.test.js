@@ -54,3 +54,25 @@ test("records a page view and exposes aggregated admin analytics", async () => {
   assert.equal(payload.data.devices[0].label, "mobile");
   assert.match(payload.data.recentVisits[0].device_name, /iPhone/);
 });
+
+test("adds, returns, and removes a project gallery image", async () => {
+  const headers = { "Content-Type": "application/json", "x-admin-api-key": "integration-test-key" };
+  const projectsResponse = await fetch(`${baseUrl}/api/admin/projects`, { headers });
+  const projects = (await projectsResponse.json()).data;
+  const project = projects[0];
+
+  const created = await fetch(`${baseUrl}/api/admin/projects/${project.id}/images`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ path: "/uploads/case-study.webp", alt_text: "Case study screen", sort_order: 0 }),
+  });
+  assert.equal(created.status, 201);
+  const image = (await created.json()).data;
+
+  const publicProject = await fetch(`${baseUrl}/api/projects/${project.id}`);
+  assert.equal(publicProject.status, 200);
+  assert.deepEqual((await publicProject.json()).data.gallery, [{ id: image.id, path: "/uploads/case-study.webp", alt_text: "Case study screen", sort_order: 0 }]);
+
+  const deleted = await fetch(`${baseUrl}/api/admin/projects/${project.id}/images/${image.id}`, { method: "DELETE", headers });
+  assert.equal(deleted.status, 204);
+});

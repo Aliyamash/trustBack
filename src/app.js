@@ -9,7 +9,7 @@ import multer from "multer";
 import { config } from "./config.js";
 import { describeVisit } from "./analytics.js";
 import { all, get, run } from "./db.js";
-import { analyticsVisitSchema, normalizeSubmission, projectSchema, submissionSchema, teamSchema } from "./validation.js";
+import { analyticsVisitSchema, normalizeSubmission, projectImageSchema, projectSchema, submissionSchema, teamSchema } from "./validation.js";
 
 fs.mkdirSync(config.uploadDir, { recursive: true });
 
@@ -51,6 +51,14 @@ function parse(schema, body, response) {
     return null;
   }
   return result.data;
+}
+
+function projectWithGallery(project) {
+  if (!project) return null;
+  return {
+    ...project,
+    gallery: all("SELECT id, path, alt_text, sort_order FROM project_images WHERE project_id = ? ORDER BY sort_order, id", [project.id]),
+  };
 }
 
 export function createApp() {
@@ -107,7 +115,7 @@ export function createApp() {
   app.get("/api/projects/:id", (request, response) => {
     const project = get("SELECT * FROM projects WHERE id = ? AND is_published = 1", [Number(request.params.id)]);
     if (!project) return response.status(404).json({ status: "error", message: "Project not found" });
-    response.json({ status: 200, data: project });
+    response.json({ status: 200, data: projectWithGallery(project) });
   });
   app.get("/api/our-team", (_request, response) => response.json({ status: 200, data: all("SELECT * FROM team_members WHERE is_published = 1 ORDER BY sort_order, id") }));
 
@@ -181,7 +189,13 @@ export function createApp() {
   });
 
   app.get("/api/admin/projects", adminOnly, (_request, response) => {
-    response.json({ status: 200, data: all("SELECT * FROM projects ORDER BY created_at DESC") });
+    response.json({ status: 200, data: all(`
+      SELECT projects.*, COUNT(project_images.id) AS gallery_count
+      FROM projects
+      LEFT JOIN project_images ON project_images.project_id = projects.id
+      GROUP BY projects.id
+      ORDER BY projects.created_at DESC
+    `) });
   });
 
   app.get("/api/admin/team", adminOnly, (_request, response) => {
@@ -207,6 +221,30 @@ export function createApp() {
     );
     if (!result.changes) return response.status(404).json({ status: "error", message: "Project not found" });
     response.json({ status: 200, data: get("SELECT * FROM projects WHERE id = ?", [Number(request.params.id)]) });
+  });
+
+  app.get("/api/admin/projects/:id/images", adminOnly, (request, response) => {
+    const projectId = Number(request.params.id);
+    if (!get("SELECT id FROM projects WHERE id = ?", [projectId])) return response.status(404).json({ status: "error", message: "Project not found" });
+    response.json({ status: 200, data: all("SELECT * FROM project_images WHERE project_id = ? ORDER BY sort_order, id", [projectId]) });
+  });
+
+  app.post("/api/admin/projects/:id/images", adminOnly, (request, response) => {
+    const projectId = Number(request.params.id);
+    if (!get("SELECT id FROM projects WHERE id = ?", [projectId])) return response.status(404).json({ status: "error", message: "Project not found" });
+    const data = parse(projectImageSchema, request.body, response);
+    if (!data) return;
+    const result = run(
+      "INSERT INTO project_images (project_id, path, alt_text, sort_order) VALUES (?, ?, ?, ?)",
+      [projectId, data.path, data.alt_text || null, data.sort_order]
+    );
+    response.status(201).json({ status: 201, data: get("SELECT * FROM project_images WHERE id = ?", [Number(result.lastInsertRowid)]) });
+  });
+
+  app.delete("/api/admin/projects/:id/images/:imageId", adminOnly, (request, response) => {
+    const result = run("DELETE FROM project_images WHERE id = ? AND project_id = ?", [Number(request.params.imageId), Number(request.params.id)]);
+    if (!result.changes) return response.status(404).json({ status: "error", message: "Project image not found" });
+    response.status(204).end();
   });
 
   app.delete("/api/admin/projects/:id", adminOnly, (request, response) => {
