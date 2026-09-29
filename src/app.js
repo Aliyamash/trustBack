@@ -61,6 +61,28 @@ function projectWithGallery(project) {
   };
 }
 
+const projectContentFields = [
+  "title_en", "title_fa", "category_name_en", "category_name_fa", "intro_en", "intro_fa",
+  "description_en", "description_fa", "tags_en", "tags_fa", "challenge_en", "challenge_fa",
+  "solution_en", "solution_fa", "outcome_en", "outcome_fa", "duration_en", "duration_fa",
+  "team_role_en", "team_role_fa", "results_en", "results_fa", "testimonial_quote_en",
+  "testimonial_quote_fa", "testimonial_name_en", "testimonial_name_fa", "testimonial_role_en",
+  "testimonial_role_fa",
+];
+
+function updateProjectContent(projectId, data) {
+  const assignments = projectContentFields.map((field) => `${field} = ?`).join(", ");
+  const values = projectContentFields.map((field) => data[field] || null);
+  run(`UPDATE projects SET ${assignments} WHERE id = ?`, [...values, projectId]);
+}
+
+function updateTeamContent(memberId, data) {
+  run(
+    `UPDATE team_members SET name_en = ?, name_fa = ?, position_en = ?, position_fa = ?, bio_en = ?, bio_fa = ? WHERE id = ?`,
+    [data.name_en || null, data.name_fa || null, data.position_en || null, data.position_fa || null, data.bio_en || null, data.bio_fa || null, memberId]
+  );
+}
+
 export function createApp() {
   const app = express();
   app.disable("x-powered-by");
@@ -209,7 +231,9 @@ export function createApp() {
       `INSERT INTO projects (title, category_name, intro, description, link, banner, tags, is_published) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [data.title, data.category_name, data.intro, data.description || null, data.link || null, data.banner, data.tags || null, data.is_published ? 1 : 0]
     );
-    response.status(201).json({ status: 201, data: get("SELECT * FROM projects WHERE id = ?", [Number(result.lastInsertRowid)]) });
+    const projectId = Number(result.lastInsertRowid);
+    updateProjectContent(projectId, data);
+    response.status(201).json({ status: 201, data: get("SELECT * FROM projects WHERE id = ?", [projectId]) });
   });
 
   app.put("/api/admin/projects/:id", adminOnly, (request, response) => {
@@ -220,6 +244,7 @@ export function createApp() {
       [data.title, data.category_name, data.intro, data.description || null, data.link || null, data.banner, data.tags || null, data.is_published ? 1 : 0, Number(request.params.id)]
     );
     if (!result.changes) return response.status(404).json({ status: "error", message: "Project not found" });
+    updateProjectContent(Number(request.params.id), data);
     response.json({ status: 200, data: get("SELECT * FROM projects WHERE id = ?", [Number(request.params.id)]) });
   });
 
@@ -260,7 +285,9 @@ export function createApp() {
       `INSERT INTO team_members (name, position, bio, profile, github, twitter, linkedin, sort_order, is_published) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [data.name, data.position, data.bio || null, data.profile, data.github || null, data.twitter || null, data.linkedin || null, data.sort_order, data.is_published ? 1 : 0]
     );
-    response.status(201).json({ status: 201, data: get("SELECT * FROM team_members WHERE id = ?", [Number(result.lastInsertRowid)]) });
+    const memberId = Number(result.lastInsertRowid);
+    updateTeamContent(memberId, data);
+    response.status(201).json({ status: 201, data: get("SELECT * FROM team_members WHERE id = ?", [memberId]) });
   });
 
   app.put("/api/admin/team/:id", adminOnly, (request, response) => {
@@ -271,6 +298,7 @@ export function createApp() {
       [data.name, data.position, data.bio || null, data.profile, data.github || null, data.twitter || null, data.linkedin || null, data.sort_order, data.is_published ? 1 : 0, Number(request.params.id)]
     );
     if (!result.changes) return response.status(404).json({ status: "error", message: "Team member not found" });
+    updateTeamContent(Number(request.params.id), data);
     response.json({ status: 200, data: get("SELECT * FROM team_members WHERE id = ?", [Number(request.params.id)]) });
   });
 

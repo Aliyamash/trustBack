@@ -76,3 +76,39 @@ test("adds, returns, and removes a project gallery image", async () => {
   const deleted = await fetch(`${baseUrl}/api/admin/projects/${project.id}/images/${image.id}`, { method: "DELETE", headers });
   assert.equal(deleted.status, 204);
 });
+
+test("persists bilingual project case-study fields when editing", async () => {
+  const headers = { "Content-Type": "application/json", "x-admin-api-key": "integration-test-key" };
+  const projects = (await (await fetch(`${baseUrl}/api/admin/projects`, { headers })).json()).data;
+  const project = projects[0];
+  const updatedLink = "https://example.com/case-study";
+
+  const updated = await fetch(`${baseUrl}/api/admin/projects/${project.id}`, {
+    method: "PUT",
+    headers,
+    body: JSON.stringify({
+      title: project.title,
+      title_en: project.title,
+      title_fa: "پروژه آزمایشی",
+      category_name: project.category_name,
+      intro: project.intro,
+      description: project.description || "Case study",
+      link: updatedLink,
+      banner: project.banner,
+      tags: project.tags || "Design",
+      challenge_en: "A verified operational challenge.",
+      challenge_fa: "یک چالش عملیاتی تأییدشده.",
+      results_en: "35% | Faster processing",
+      results_fa: "۳۵٪ | پردازش سریع‌تر",
+      is_published: true,
+    }),
+  });
+  assert.equal(updated.status, 200);
+
+  const publicProject = await fetch(`${baseUrl}/api/projects/${project.id}`);
+  const payload = (await publicProject.json()).data;
+  assert.equal(payload.link, updatedLink);
+  assert.equal(payload.title_fa, "پروژه آزمایشی");
+  assert.equal(payload.challenge_en, "A verified operational challenge.");
+  assert.equal(payload.results_fa, "۳۵٪ | پردازش سریع‌تر");
+});

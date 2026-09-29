@@ -94,6 +94,23 @@ for (const [name, type] of [
   if (!pageViewColumns.has(name)) db.exec(`ALTER TABLE page_views ADD COLUMN ${name} ${type}`);
 }
 
+const projectColumns = new Set(db.prepare("PRAGMA table_info(projects)").all().map((column) => column.name));
+for (const name of [
+  "title_en", "title_fa", "category_name_en", "category_name_fa", "intro_en", "intro_fa",
+  "description_en", "description_fa", "tags_en", "tags_fa", "challenge_en", "challenge_fa",
+  "solution_en", "solution_fa", "outcome_en", "outcome_fa", "duration_en", "duration_fa",
+  "team_role_en", "team_role_fa", "results_en", "results_fa", "testimonial_quote_en",
+  "testimonial_quote_fa", "testimonial_name_en", "testimonial_name_fa", "testimonial_role_en",
+  "testimonial_role_fa",
+]) {
+  if (!projectColumns.has(name)) db.exec(`ALTER TABLE projects ADD COLUMN ${name} TEXT`);
+}
+
+const teamMemberColumns = new Set(db.prepare("PRAGMA table_info(team_members)").all().map((column) => column.name));
+for (const name of ["name_en", "name_fa", "position_en", "position_fa", "bio_en", "bio_fa"]) {
+  if (!teamMemberColumns.has(name)) db.exec(`ALTER TABLE team_members ADD COLUMN ${name} TEXT`);
+}
+
 export const seedResult = seedDefaultContent(db, config);
 
 export function all(sql, params = []) {
