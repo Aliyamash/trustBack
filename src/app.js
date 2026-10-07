@@ -9,7 +9,7 @@ import multer from "multer";
 import { config } from "./config.js";
 import { describeVisit } from "./analytics.js";
 import { all, get, run } from "./db.js";
-import { analyticsVisitSchema, normalizeSubmission, projectImageSchema, projectSchema, submissionSchema, teamSchema } from "./validation.js";
+import { analyticsVisitSchema, normalizeSubmission, projectImageSchema, projectImageUpdateSchema, projectSchema, submissionSchema, teamSchema } from "./validation.js";
 
 fs.mkdirSync(config.uploadDir, { recursive: true });
 
@@ -57,7 +57,7 @@ function projectWithGallery(project) {
   if (!project) return null;
   return {
     ...project,
-    gallery: all("SELECT id, path, alt_text, sort_order FROM project_images WHERE project_id = ? ORDER BY sort_order, id", [project.id]),
+    gallery: all("SELECT id, path, alt_text, alt_text_en, alt_text_fa, sort_order FROM project_images WHERE project_id = ? ORDER BY sort_order, id", [project.id]),
   };
 }
 
@@ -260,10 +260,25 @@ export function createApp() {
     const data = parse(projectImageSchema, request.body, response);
     if (!data) return;
     const result = run(
-      "INSERT INTO project_images (project_id, path, alt_text, sort_order) VALUES (?, ?, ?, ?)",
-      [projectId, data.path, data.alt_text || null, data.sort_order]
+      "INSERT INTO project_images (project_id, path, alt_text, alt_text_en, alt_text_fa, sort_order) VALUES (?, ?, ?, ?, ?, ?)",
+      [projectId, data.path, data.alt_text || null, data.alt_text_en || null, data.alt_text_fa || null, data.sort_order]
     );
     response.status(201).json({ status: 201, data: get("SELECT * FROM project_images WHERE id = ?", [Number(result.lastInsertRowid)]) });
+  });
+
+  app.patch("/api/admin/projects/:id/images/:imageId", adminOnly, (request, response) => {
+    const projectId = Number(request.params.id);
+    const imageId = Number(request.params.imageId);
+    if (!get("SELECT id FROM project_images WHERE id = ? AND project_id = ?", [imageId, projectId])) {
+      return response.status(404).json({ status: "error", message: "Project image not found" });
+    }
+    const data = parse(projectImageUpdateSchema, request.body, response);
+    if (!data) return;
+    run(
+      "UPDATE project_images SET alt_text = ?, alt_text_en = ?, alt_text_fa = ?, sort_order = ? WHERE id = ? AND project_id = ?",
+      [data.alt_text || null, data.alt_text_en || null, data.alt_text_fa || null, data.sort_order, imageId, projectId]
+    );
+    response.json({ status: 200, data: get("SELECT * FROM project_images WHERE id = ?", [imageId]) });
   });
 
   app.delete("/api/admin/projects/:id/images/:imageId", adminOnly, (request, response) => {

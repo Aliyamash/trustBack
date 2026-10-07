@@ -79,6 +79,15 @@ export const projectSchema = z.object({
 export const projectImageSchema = z.object({
   path: z.string().trim().min(1).max(500),
   alt_text: optionalText(250),
+  alt_text_en: optionalText(250),
+  alt_text_fa: optionalText(250),
+  sort_order: z.coerce.number().int().min(0).max(10000).default(0),
+});
+
+export const projectImageUpdateSchema = z.object({
+  alt_text: optionalText(250),
+  alt_text_en: optionalText(250),
+  alt_text_fa: optionalText(250),
   sort_order: z.coerce.number().int().min(0).max(10000).default(0),
 });
 

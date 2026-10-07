@@ -64,14 +64,22 @@ test("adds, returns, and removes a project gallery image", async () => {
   const created = await fetch(`${baseUrl}/api/admin/projects/${project.id}/images`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ path: "/uploads/case-study.webp", alt_text: "Case study screen", sort_order: 0 }),
+    body: JSON.stringify({ path: "/uploads/case-study.webp", alt_text: "Case study screen", alt_text_en: "Case study screen", alt_text_fa: "نمای پروژه", sort_order: 0 }),
   });
   assert.equal(created.status, 201);
   const image = (await created.json()).data;
 
   const publicProject = await fetch(`${baseUrl}/api/projects/${project.id}`);
   assert.equal(publicProject.status, 200);
-  assert.deepEqual((await publicProject.json()).data.gallery, [{ id: image.id, path: "/uploads/case-study.webp", alt_text: "Case study screen", sort_order: 0 }]);
+  assert.deepEqual((await publicProject.json()).data.gallery, [{ id: image.id, path: "/uploads/case-study.webp", alt_text: "Case study screen", alt_text_en: "Case study screen", alt_text_fa: "نمای پروژه", sort_order: 0 }]);
+
+  const updated = await fetch(`${baseUrl}/api/admin/projects/${project.id}/images/${image.id}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({ alt_text: "Updated screen", alt_text_en: "Updated screen", alt_text_fa: "نمای به‌روزشده", sort_order: 1 }),
+  });
+  assert.equal(updated.status, 200);
+  assert.equal((await updated.json()).data.alt_text_fa, "نمای به‌روزشده");
 
   const deleted = await fetch(`${baseUrl}/api/admin/projects/${project.id}/images/${image.id}`, { method: "DELETE", headers });
   assert.equal(deleted.status, 204);

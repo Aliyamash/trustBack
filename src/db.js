@@ -111,6 +111,28 @@ for (const name of ["name_en", "name_fa", "position_en", "position_fa", "bio_en"
   if (!teamMemberColumns.has(name)) db.exec(`ALTER TABLE team_members ADD COLUMN ${name} TEXT`);
 }
 
+const projectImageColumns = new Set(db.prepare("PRAGMA table_info(project_images)").all().map((column) => column.name));
+for (const name of ["alt_text_en", "alt_text_fa"]) {
+  if (!projectImageColumns.has(name)) db.exec(`ALTER TABLE project_images ADD COLUMN ${name} TEXT`);
+}
+
+// Existing records predate bilingual columns. Preserve their original content
+// as English while leaving Persian explicitly incomplete for the admin editor.
+db.exec(`
+  UPDATE projects SET
+    title_en = CASE WHEN NULLIF(title_en, '') IS NULL AND NULLIF(title_fa, '') IS NULL THEN title ELSE title_en END,
+    category_name_en = CASE WHEN NULLIF(category_name_en, '') IS NULL AND NULLIF(category_name_fa, '') IS NULL THEN category_name ELSE category_name_en END,
+    intro_en = CASE WHEN NULLIF(intro_en, '') IS NULL AND NULLIF(intro_fa, '') IS NULL THEN intro ELSE intro_en END,
+    description_en = CASE WHEN NULLIF(description_en, '') IS NULL AND NULLIF(description_fa, '') IS NULL THEN description ELSE description_en END,
+    tags_en = CASE WHEN NULLIF(tags_en, '') IS NULL AND NULLIF(tags_fa, '') IS NULL THEN tags ELSE tags_en END;
+  UPDATE team_members SET
+    name_en = CASE WHEN NULLIF(name_en, '') IS NULL AND NULLIF(name_fa, '') IS NULL THEN name ELSE name_en END,
+    position_en = CASE WHEN NULLIF(position_en, '') IS NULL AND NULLIF(position_fa, '') IS NULL THEN position ELSE position_en END,
+    bio_en = CASE WHEN NULLIF(bio_en, '') IS NULL AND NULLIF(bio_fa, '') IS NULL THEN bio ELSE bio_en END;
+  UPDATE project_images SET
+    alt_text_en = CASE WHEN NULLIF(alt_text_en, '') IS NULL AND NULLIF(alt_text_fa, '') IS NULL THEN alt_text ELSE alt_text_en END;
+`);
+
 export const seedResult = seedDefaultContent(db, config);
 
 export function all(sql, params = []) {
